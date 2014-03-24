@@ -957,13 +957,14 @@ class StudentsList(QtGui.QFrame):
         error = False
         # save items
         for row in data:
-            sid, stud_num, name, bsa, year = row
+            cellIndex, sid, stud_num, name, bsa, year = row
             try:
                 if isinstance(sid, int) or len(sid):
                     self.db.updateStudents(sid, stud_num, name, bsa, year)
                 elif len(stud_num) or len(name) or len(bsa) or len(year):
                     sid = self.db.insertStudents(stud_num, name, bsa, year)
-                    row[0] = sid
+                    nitem = QtGui.QTableWidgetItem(str(sid))
+                    self.studentsTable.setItem(cellIndex, 0, nitem)
             except self.db.DuplicateError as err:
                 QtGui.QMessageBox.warning(self, "Error", str(err))
                 error = True
@@ -1014,7 +1015,6 @@ class StudentsTable(QtGui.QTableWidget):
         self.dirty = dirty
     
     def setData(self, data):
-        self.data = data
         # disable sorting while setting rows
         self.setSortingEnabled(False)
         while self.rowCount() < len(data):
@@ -1028,7 +1028,6 @@ class StudentsTable(QtGui.QTableWidget):
         self.setSortingEnabled(True)
 
     def addRow(self):
-        self.data.append(["", "", "", "", ""])
         self.insertRow(self.rowCount())
         # scroll to bottom
         vBar = self.verticalScrollBar()
@@ -1038,20 +1037,25 @@ class StudentsTable(QtGui.QTableWidget):
         for row in reversed(self.selectionModel().selectedRows()):
             index = row.row()
             # add to deleted list
-            sid = self.data[index][0]
+            sid = self.item(index, 0).text()
             if isinstance(sid, int) or len(sid):
                 self.deleted.append(sid)
-            # remove item from data
-            del self.data[index]
+            # remove item from ui
             self.removeRow(index)
         self.setDirty(True)
-
-    def rowChanged(self, item):
-        self.data[item.row()][item.column()] = str(item.text())
-        self.setDirty()
-
+        
     def getData(self):
-        return self.data
+        rows = []
+        for i in range(self.rowCount()):
+            row = [i]
+            for j in range(self.columnCount()):
+                cell = self.item(i, j)
+                row.append(str(cell.text() if cell else ""))
+            rows.append(row);
+        return rows
+                
+    def rowChanged(self,  item):
+        self.setDirty()
     
     def getDeleted(self):
         return self.deleted
